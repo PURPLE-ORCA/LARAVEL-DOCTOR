@@ -4,13 +4,21 @@ declare(strict_types=1);
 
 namespace Sahraoui\Doctor\Commands;
 
+use Sahraoui\Doctor\Checks\AppEnvCheck;
 use Sahraoui\Doctor\Checks\AppKeyCheck;
 use Sahraoui\Doctor\Checks\AppUrlCheck;
+use Sahraoui\Doctor\Checks\CacheDriverCheck;
 use Sahraoui\Doctor\Checks\CacheStatusCheck;
+use Sahraoui\Doctor\Checks\DatabaseConnectionCheck;
 use Sahraoui\Doctor\Checks\DebugModeCheck;
 use Sahraoui\Doctor\Checks\EnvFileCheck;
+use Sahraoui\Doctor\Checks\MailMailerCheck;
+use Sahraoui\Doctor\Checks\MaintenanceModeCheck;
 use Sahraoui\Doctor\Checks\PhpVersionCheck;
+use Sahraoui\Doctor\Checks\QueueConnectionCheck;
 use Sahraoui\Doctor\Checks\SecurityAdvisoriesCheck;
+use Sahraoui\Doctor\Checks\SessionDriverCheck;
+use Sahraoui\Doctor\Checks\StorageLinkCheck;
 use Sahraoui\Doctor\Contracts\DoctorCheck;
 use Sahraoui\Doctor\Output\ConsoleFormatter;
 use Sahraoui\Doctor\Scoring\ScoreCalculator;
@@ -97,13 +105,28 @@ final class DoctorCommand extends Command
     private function buildChecks(): array
     {
         $checks = [
+            // Environment
             new PhpVersionCheck,
             new AppKeyCheck,
+            new AppEnvCheck,
             new AppUrlCheck,
-            new DebugModeCheck,
-            new CacheStatusCheck,
-            new SecurityAdvisoriesCheck,
             new EnvFileCheck,
+            new SessionDriverCheck,
+            new CacheDriverCheck,
+            new QueueConnectionCheck,
+            new MailMailerCheck,
+            new MaintenanceModeCheck,
+
+            // Security
+            new DebugModeCheck,
+            new SecurityAdvisoriesCheck,
+
+            // Performance
+            new CacheStatusCheck,
+            new StorageLinkCheck,
+
+            // Infrastructure
+            new DatabaseConnectionCheck,
         ];
 
         // Register any custom checks from config
