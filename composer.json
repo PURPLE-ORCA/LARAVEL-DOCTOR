@@ -1,0 +1,46 @@
+{
+    "name": "sahraoui/laravel-doctor",
+    "description": "The health check tool for Laravel apps. Run php artisan doctor and get a score.",
+    "keywords": ["laravel", "health", "doctor", "quality", "score"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "sahraoui",
+            "email": "hello@sahraoui.dev"
+        }
+    ],
+    "require": {
+        "php": "^8.1",
+        "laravel/framework": "^10.0|^11.0|^12.0",
+        "symfony/console": "^6.0|^7.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.0|^9.0",
+        "pestphp/pest": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Sahraoui\\Doctor\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Sahraoui\\Doctor\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Sahraoui\\Doctor\\DoctorServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
