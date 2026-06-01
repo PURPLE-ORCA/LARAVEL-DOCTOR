@@ -7,6 +7,7 @@ namespace Sahraoui\Doctor\Commands;
 use Sahraoui\Doctor\Checks\AppKeyCheck;
 use Sahraoui\Doctor\Checks\CacheStatusCheck;
 use Sahraoui\Doctor\Checks\DebugModeCheck;
+use Sahraoui\Doctor\Checks\EnvFileCheck;
 use Sahraoui\Doctor\Checks\PhpVersionCheck;
 use Sahraoui\Doctor\Checks\SecurityAdvisoriesCheck;
 use Sahraoui\Doctor\Contracts\DoctorCheck;
@@ -100,6 +101,7 @@ final class DoctorCommand extends Command
             new DebugModeCheck,
             new CacheStatusCheck,
             new SecurityAdvisoriesCheck,
+            new EnvFileCheck,
         ];
 
         // Register any custom checks from config
