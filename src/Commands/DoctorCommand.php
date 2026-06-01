@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Sahraoui\Doctor\Commands;
 
 use Sahraoui\Doctor\Checks\AppKeyCheck;
+use Sahraoui\Doctor\Checks\AppUrlCheck;
 use Sahraoui\Doctor\Checks\CacheStatusCheck;
 use Sahraoui\Doctor\Checks\DebugModeCheck;
 use Sahraoui\Doctor\Checks\EnvFileCheck;
@@ -98,6 +99,7 @@ final class DoctorCommand extends Command
         $checks = [
             new PhpVersionCheck,
             new AppKeyCheck,
+            new AppUrlCheck,
             new DebugModeCheck,
             new CacheStatusCheck,
             new SecurityAdvisoriesCheck,
