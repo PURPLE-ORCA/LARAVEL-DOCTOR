@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Sahraoui\Doctor\Tests;
+namespace PurpleOrca\Doctor\Tests;
 
 use Orchestra\Testbench\TestCase as BaseTestCase;
-use Sahraoui\Doctor\DoctorServiceProvider;
+use PurpleOrca\Doctor\DoctorServiceProvider;
 
 abstract class TestCase extends BaseTestCase
 {

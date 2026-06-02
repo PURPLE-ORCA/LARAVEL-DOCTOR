@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use Sahraoui\Doctor\Checks\EnvFileCheck;
-use Sahraoui\Doctor\Enums\Status;
+use PurpleOrca\Doctor\Checks\EnvFileCheck;
+use PurpleOrca\Doctor\Enums\Status;
 
 it('warns when .env file is missing', function () {
     // In testbench, .env might or might not exist

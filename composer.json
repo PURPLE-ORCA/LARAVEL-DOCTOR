@@ -1,12 +1,12 @@
 {
-    "name": "sahraoui/laravel-doctor",
+    "name": "purple-orca/laravel-doctor",
     "description": "The health check tool for Laravel apps. Run php artisan doctor and get a score.",
     "keywords": ["laravel", "health", "doctor", "quality", "score"],
     "license": "MIT",
     "authors": [
         {
-            "name": "sahraoui",
-            "email": "hello@sahraoui.dev"
+            "name": "purple-orca",
+            "email": "hello@purpleorca.dev"
         }
     ],
     "require": {
@@ -20,18 +20,18 @@
     },
     "autoload": {
         "psr-4": {
-            "Sahraoui\\Doctor\\": "src/"
+            "PurpleOrca\\Doctor\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Sahraoui\\Doctor\\Tests\\": "tests/"
+            "PurpleOrca\\Doctor\\Tests\\": "tests/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Sahraoui\\Doctor\\DoctorServiceProvider"
+                "PurpleOrca\\Doctor\\DoctorServiceProvider"
             ]
         }
     },

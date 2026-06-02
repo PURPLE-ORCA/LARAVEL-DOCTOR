@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Sahraoui\Doctor;
+namespace PurpleOrca\Doctor;
 
-use Sahraoui\Doctor\Commands\DoctorCommand;
+use PurpleOrca\Doctor\Commands\DoctorCommand;
 use Illuminate\Support\ServiceProvider;
 
 final class DoctorServiceProvider extends ServiceProvider

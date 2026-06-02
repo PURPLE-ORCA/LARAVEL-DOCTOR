@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Sahraoui\Doctor\Output;
+namespace PurpleOrca\Doctor\Output;
 
-use Sahraoui\Doctor\Enums\Status;
+use PurpleOrca\Doctor\Enums\Status;
 use Symfony\Component\Console\Output\OutputInterface;
 
 final class ConsoleFormatter
@@ -14,7 +14,7 @@ final class ConsoleFormatter
     ) {}
 
     /**
-     * @param array<string, list<array{check: \Sahraoui\Doctor\Contracts\DoctorCheck, result: \Sahraoui\Doctor\Contracts\DoctorCheckResult}>> $groupedResults
+     * @param array<string, list<array{check: \PurpleOrca\Doctor\Contracts\DoctorCheck, result: \PurpleOrca\Doctor\Contracts\DoctorCheckResult}>> $groupedResults
      */
     public function render(array $groupedResults, int $score, array $breakdown): void
     {

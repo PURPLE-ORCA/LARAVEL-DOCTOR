@@ -2,26 +2,26 @@
 
 declare(strict_types=1);
 
-namespace Sahraoui\Doctor\Commands;
+namespace PurpleOrca\Doctor\Commands;
 
-use Sahraoui\Doctor\Checks\AppEnvCheck;
-use Sahraoui\Doctor\Checks\AppKeyCheck;
-use Sahraoui\Doctor\Checks\AppUrlCheck;
-use Sahraoui\Doctor\Checks\CacheDriverCheck;
-use Sahraoui\Doctor\Checks\CacheStatusCheck;
-use Sahraoui\Doctor\Checks\DatabaseConnectionCheck;
-use Sahraoui\Doctor\Checks\DebugModeCheck;
-use Sahraoui\Doctor\Checks\EnvFileCheck;
-use Sahraoui\Doctor\Checks\MailMailerCheck;
-use Sahraoui\Doctor\Checks\MaintenanceModeCheck;
-use Sahraoui\Doctor\Checks\PhpVersionCheck;
-use Sahraoui\Doctor\Checks\QueueConnectionCheck;
-use Sahraoui\Doctor\Checks\SecurityAdvisoriesCheck;
-use Sahraoui\Doctor\Checks\SessionDriverCheck;
-use Sahraoui\Doctor\Checks\StorageLinkCheck;
-use Sahraoui\Doctor\Contracts\DoctorCheck;
-use Sahraoui\Doctor\Output\ConsoleFormatter;
-use Sahraoui\Doctor\Scoring\ScoreCalculator;
+use PurpleOrca\Doctor\Checks\AppEnvCheck;
+use PurpleOrca\Doctor\Checks\AppKeyCheck;
+use PurpleOrca\Doctor\Checks\AppUrlCheck;
+use PurpleOrca\Doctor\Checks\CacheDriverCheck;
+use PurpleOrca\Doctor\Checks\CacheStatusCheck;
+use PurpleOrca\Doctor\Checks\DatabaseConnectionCheck;
+use PurpleOrca\Doctor\Checks\DebugModeCheck;
+use PurpleOrca\Doctor\Checks\EnvFileCheck;
+use PurpleOrca\Doctor\Checks\MailMailerCheck;
+use PurpleOrca\Doctor\Checks\MaintenanceModeCheck;
+use PurpleOrca\Doctor\Checks\PhpVersionCheck;
+use PurpleOrca\Doctor\Checks\QueueConnectionCheck;
+use PurpleOrca\Doctor\Checks\SecurityAdvisoriesCheck;
+use PurpleOrca\Doctor\Checks\SessionDriverCheck;
+use PurpleOrca\Doctor\Checks\StorageLinkCheck;
+use PurpleOrca\Doctor\Contracts\DoctorCheck;
+use PurpleOrca\Doctor\Output\ConsoleFormatter;
+use PurpleOrca\Doctor\Scoring\ScoreCalculator;
 use Illuminate\Console\Command;
 
 final class DoctorCommand extends Command

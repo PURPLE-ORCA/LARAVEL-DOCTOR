@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Sahraoui\Doctor\Checks;
+namespace PurpleOrca\Doctor\Checks;
 
-use Sahraoui\Doctor\Contracts\DoctorCheck;
-use Sahraoui\Doctor\Contracts\DoctorCheckResult;
+use PurpleOrca\Doctor\Contracts\DoctorCheck;
+use PurpleOrca\Doctor\Contracts\DoctorCheckResult;
 
 final class MailMailerCheck implements DoctorCheck
 {

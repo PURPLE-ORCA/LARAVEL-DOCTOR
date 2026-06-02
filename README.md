@@ -2,9 +2,9 @@
 
 > The health check tool for Laravel apps. Run `php artisan doctor` and get a score.
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/sahraoui/laravel-doctor?style=flat-square)](https://packagist.org/packages/sahraoui/laravel-doctor)
-[![Tests](https://img.shields.io/github/actions/workflow/status/sahraoui/laravel-doctor/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/sahraoui/laravel-doctor/actions?query=workflow%3Arun-tests+branch%3Amain)
-[![MIT License](https://img.shields.io/packagist/l/sahraoui/laravel-doctor?style=flat-square)](LICENSE.md)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/purple-orca/laravel-doctor?style=flat-square)](https://packagist.org/packages/purple-orca/laravel-doctor)
+[![Tests](https://img.shields.io/github/actions/workflow/status/PURPLE-ORCA/LARAVEL-DOCTOR/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/PURPLE-ORCA/LARAVEL-DOCTOR/actions?query=workflow%3Arun-tests+branch%3Amain)
+[![MIT License](https://img.shields.io/packagist/l/purple-orca/laravel-doctor?style=flat-square)](LICENSE.md)
 
 *Not affiliated with or endorsed by Laravel LLC.*
 
@@ -38,7 +38,7 @@ php artisan doctor
 ## Installation
 
 ```bash
-composer require sahraoui/laravel-doctor --dev
+composer require purple-orca/laravel-doctor --dev
 ```
 
 That's it. The command `php artisan doctor` is now available.
@@ -113,7 +113,7 @@ final class MyCheck implements DoctorCheck
 # GitHub Actions
 - name: Laravel Doctor
   run: |
-    composer require sahraoui/laravel-doctor --dev
+    composer require purple-orca/laravel-doctor --dev
     php artisan doctor --json
 ```
 

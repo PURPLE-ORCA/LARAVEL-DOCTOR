@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use Sahraoui\Doctor\Checks\AppUrlCheck;
-use Sahraoui\Doctor\Enums\Status;
+use PurpleOrca\Doctor\Checks\AppUrlCheck;
+use PurpleOrca\Doctor\Enums\Status;
 
 it('checks APP_URL configuration', function () {
     $check = new AppUrlCheck;

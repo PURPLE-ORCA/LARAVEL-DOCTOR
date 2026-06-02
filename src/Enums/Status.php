@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Sahraoui\Doctor\Enums;
+namespace PurpleOrca\Doctor\Enums;
 
 enum Status: string
 {

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use Sahraoui\Doctor\Checks\AppKeyCheck;
-use Sahraoui\Doctor\Checks\DebugModeCheck;
-use Sahraoui\Doctor\Checks\PhpVersionCheck;
-use Sahraoui\Doctor\Enums\Status;
+use PurpleOrca\Doctor\Checks\AppKeyCheck;
+use PurpleOrca\Doctor\Checks\DebugModeCheck;
+use PurpleOrca\Doctor\Checks\PhpVersionCheck;
+use PurpleOrca\Doctor\Enums\Status;
 
 it('checks PHP version against composer.json requirement', function () {
     $check = new PhpVersionCheck;

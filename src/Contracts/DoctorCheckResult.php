@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Sahraoui\Doctor\Contracts;
+namespace PurpleOrca\Doctor\Contracts;
 
-use Sahraoui\Doctor\Enums\Status;
+use PurpleOrca\Doctor\Enums\Status;
 
 final class DoctorCheckResult
 {

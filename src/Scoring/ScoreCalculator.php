@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Sahraoui\Doctor\Scoring;
+namespace PurpleOrca\Doctor\Scoring;
 
-use Sahraoui\Doctor\Contracts\DoctorCheckResult;
-use Sahraoui\Doctor\Enums\Status;
+use PurpleOrca\Doctor\Contracts\DoctorCheckResult;
+use PurpleOrca\Doctor\Enums\Status;
 
 final class ScoreCalculator
 {
