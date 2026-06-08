@@ -16,7 +16,7 @@ final class ConsoleFormatter
     /**
      * @param array<string, list<array{check: \PurpleOrca\Doctor\Contracts\DoctorCheck, result: \PurpleOrca\Doctor\Contracts\DoctorCheckResult}>> $groupedResults
      */
-    public function render(array $groupedResults, int $score, array $breakdown, float $elapsedSeconds = 0): void
+    public function render(array $groupedResults, int $score, array $breakdown, float $elapsedSeconds = 0, bool $verbose = false): void
     {
         $totalChecks = $breakdown['pass'] + $breakdown['warn'] + $breakdown['fail'];
         $totalIssues = $breakdown['warn'] + $breakdown['fail'];
@@ -37,11 +37,19 @@ final class ConsoleFormatter
         }
 
         foreach ($groupedResults as $category => $results) {
+            $hasVisible = $verbose || $this->categoryHasIssues($results);
+            if (! $hasVisible) {
+                continue;
+            }
+
             $this->output->writeln("  <options=bold>{$this->titleCase($category)}</options=bold>");
 
             foreach ($results as $item) {
-                $check = $item['check'];
                 $result = $item['result'];
+
+                if (! $verbose && $result->status === Status::Pass) {
+                    continue;
+                }
 
                 $icon = match ($result->status) {
                     Status::Pass => '✓',
@@ -149,6 +157,20 @@ final class ConsoleFormatter
         $bar = str_repeat('█', $filled) . str_repeat('░', $empty);
 
         return "<fg={$color}>{$bar}</>";
+    }
+
+    /**
+     * @param list<array{check: \PurpleOrca\Doctor\Contracts\DoctorCheck, result: \PurpleOrca\Doctor\Contracts\DoctorCheckResult}> $results
+     */
+    private function categoryHasIssues(array $results): bool
+    {
+        foreach ($results as $item) {
+            if ($item['result']->status !== Status::Pass) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function titleCase(string $value): string

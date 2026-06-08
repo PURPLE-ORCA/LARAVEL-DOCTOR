@@ -28,7 +28,8 @@ final class DoctorCommand extends Command
 {
     protected $signature = 'doctor
         {--json : Output results as JSON}
-        {--category= : Run checks for a specific category only}';
+        {--category= : Run checks for a specific category only}
+        {--verbose : Show all checks including passing ones}';
 
     protected $description = 'Run health checks on your Laravel application';
 
@@ -91,7 +92,14 @@ final class DoctorCommand extends Command
             $grouped[$category][] = $item;
         }
 
-        $formatter->render($grouped, $score, $breakdown, $elapsed);
+        $formatter->render($grouped, $score, $breakdown, $elapsed, $this->option('verbose'));
+
+        // Verbose hint
+        $hiddenPasses = $breakdown['pass'];
+        if (! $this->option('verbose') && $hiddenPasses > 0) {
+            $this->output->writeln("  <comment>+{$hiddenPasses} passed — run with --verbose to see all checks</comment>");
+            $this->output->writeln('');
+        }
 
         // Exit code based on failures
         if ($breakdown['fail'] > 0) {
