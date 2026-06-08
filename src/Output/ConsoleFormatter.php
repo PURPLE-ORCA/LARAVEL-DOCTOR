@@ -36,6 +36,9 @@ final class ConsoleFormatter
             $this->output->writeln('');
         }
 
+        // Sort categories by severity (failures first, then warnings, then passes)
+        $groupedResults = $this->sortCategoriesBySeverity($groupedResults);
+
         foreach ($groupedResults as $category => $results) {
             $hasVisible = $verbose || $this->categoryHasIssues($results);
             if (! $hasVisible) {
@@ -43,6 +46,9 @@ final class ConsoleFormatter
             }
 
             $this->output->writeln("  <options=bold>{$this->titleCase($category)}</options=bold>");
+
+            // Sort checks within category: fail > warn > pass
+            $results = $this->sortChecksBySeverity($results);
 
             foreach ($results as $item) {
                 $result = $item['result'];
@@ -154,6 +160,64 @@ final class ConsoleFormatter
                 $this->output->writeln($line);
             }
         }
+    }
+
+    /**
+     * @param array<string, list<array{check: \PurpleOrca\Doctor\Contracts\DoctorCheck, result: \PurpleOrca\Doctor\Contracts\DoctorCheckResult}>> $groupedResults
+     * @return array<string, list<array{check: \PurpleOrca\Doctor\Contracts\DoctorCheck, result: \PurpleOrca\Doctor\Contracts\DoctorCheckResult}>>
+     */
+    private function sortCategoriesBySeverity(array $groupedResults): array
+    {
+        uksort($groupedResults, function (string $a, string $b) use ($groupedResults) {
+            $severityA = $this->categorySeverity($groupedResults[$a]);
+            $severityB = $this->categorySeverity($groupedResults[$b]);
+
+            return $severityB <=> $severityA;
+        });
+
+        return $groupedResults;
+    }
+
+    /**
+     * @param list<array{check: \PurpleOrca\Doctor\Contracts\DoctorCheck, result: \PurpleOrca\Doctor\Contracts\DoctorCheckResult}> $results
+     */
+    private function categorySeverity(array $results): int
+    {
+        $max = 0;
+        foreach ($results as $item) {
+            $severity = match ($item['result']->status) {
+                Status::Fail => 3,
+                Status::Warn => 2,
+                Status::Pass => 1,
+            };
+            $max = max($max, $severity);
+        }
+
+        return $max;
+    }
+
+    /**
+     * @param list<array{check: \PurpleOrca\Doctor\Contracts\DoctorCheck, result: \PurpleOrca\Doctor\Contracts\DoctorCheckResult}> $results
+     * @return list<array{check: \PurpleOrca\Doctor\Contracts\DoctorCheck, result: \PurpleOrca\Doctor\Contracts\DoctorCheckResult}>
+     */
+    private function sortChecksBySeverity(array $results): array
+    {
+        usort($results, function (array $a, array $b) {
+            $severityA = match ($a['result']->status) {
+                Status::Fail => 3,
+                Status::Warn => 2,
+                Status::Pass => 1,
+            };
+            $severityB = match ($b['result']->status) {
+                Status::Fail => 3,
+                Status::Warn => 2,
+                Status::Pass => 1,
+            };
+
+            return $severityB <=> $severityA;
+        });
+
+        return $results;
     }
 
     private function renderProgressBar(int $score, string $color): string
