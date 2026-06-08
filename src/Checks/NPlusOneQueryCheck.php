@@ -9,6 +9,20 @@ use PurpleOrca\Doctor\Contracts\DoctorCheckResult;
 
 final class NPlusOneQueryCheck implements DoctorCheck
 {
+    private const RELATION_METHODS = [
+        'belongsTo',
+        'belongsToMany',
+        'hasOne',
+        'hasMany',
+        'hasOneThrough',
+        'hasManyThrough',
+        'morphTo',
+        'morphOne',
+        'morphMany',
+        'morphToMany',
+        'morphedByMany',
+    ];
+
     public function __construct(
         private readonly ?string $rootPath = null,
     ) {}
@@ -98,20 +112,25 @@ final class NPlusOneQueryCheck implements DoctorCheck
         $lines = file($path, FILE_IGNORE_NEW_LINES) ?: [];
 
         foreach ($lines as $index => $line) {
-            if (! preg_match('/foreach\s*\(\s*(\$[A-Za-z_][A-Za-z0-9_]*)\s+as\s+(?:\$[A-Za-z_][A-Za-z0-9_]*\s*=>\s*)?(\$[A-Za-z_][A-Za-z0-9_]*)/i', $line, $matches)) {
+            if (! preg_match('/foreach\s*\(\s*(.*?)\s+as\s+(?:\$[A-Za-z_][A-Za-z0-9_]*\s*=>\s*)?(\$[A-Za-z_][A-Za-z0-9_]*)\s*\)/i', $line, $matches)) {
                 continue;
             }
 
-            $iterableVar = $matches[1];
+            $iterableExpr = trim($matches[1]);
             $itemVar = $matches[2];
-            $context = $this->contextBefore($lines, $index, 20);
+            $context = $this->contextBefore($lines, $index, 30);
 
-            if (! $this->looksLikeUncheckedQuerySource($context, $iterableVar)) {
+            if (! $this->looksLikeUncheckedQuerySource($context, $iterableExpr)) {
+                continue;
+            }
+
+            $modelClass = $this->inferModelClass($context, $iterableExpr);
+            if ($modelClass === null) {
                 continue;
             }
 
             $body = $this->collectPhpLoopBody($lines, $index);
-            $snippet = $this->findRelationChainSnippet($body, $itemVar);
+            $snippet = $this->findRelationChainSnippet($body, $itemVar, $modelClass);
 
             if ($snippet !== null) {
                 return [
@@ -139,15 +158,19 @@ final class NPlusOneQueryCheck implements DoctorCheck
 
             $iterableExpr = trim($matches[1]);
             $itemVar = $matches[2];
-            $context = $this->contextBefore($lines, $index, 20);
+            $context = $this->contextBefore($lines, $index, 30);
 
-            // Blade is conservative: only flag if we can see a query source or inline eager-load omission.
             if (! $this->looksLikeUncheckedBladeSource($context, $iterableExpr)) {
                 continue;
             }
 
+            $modelClass = $this->inferModelClass($context, $iterableExpr);
+            if ($modelClass === null) {
+                continue;
+            }
+
             $body = $this->collectBladeLoopBody($lines, $index);
-            $snippet = $this->findRelationChainSnippet($body, $itemVar);
+            $snippet = $this->findRelationChainSnippet($body, $itemVar, $modelClass);
 
             if ($snippet !== null) {
                 return [
@@ -183,9 +206,9 @@ final class NPlusOneQueryCheck implements DoctorCheck
             }
 
             if (! $started && preg_match('/:\s*$/', trim($current))) {
-                // Alternative syntax: stop at endforeach;
                 for ($j = $i + 1; $j < count($lines); $j++) {
                     $buffer[] = $lines[$j];
+
                     if (preg_match('/^\s*endforeach\s*;\s*$/', $lines[$j])) {
                         break 2;
                     }
@@ -219,39 +242,206 @@ final class NPlusOneQueryCheck implements DoctorCheck
         return implode("\n", array_slice($lines, $start, $index - $start));
     }
 
-    private function looksLikeUncheckedQuerySource(string $context, string $iterableVar): bool
+    private function looksLikeUncheckedQuerySource(string $context, string $iterableExpr): bool
     {
-        if (! str_contains($context, $iterableVar)) {
+        $haystack = $context . "\n" . $iterableExpr;
+
+        if (preg_match('/\b(with|load|loadMissing)\s*\(/i', $haystack)) {
             return false;
         }
 
-        if (preg_match('/' . preg_quote($iterableVar, '/') . '\s*=\s*.*?(with|load|loadMissing)\s*\(/is', $context)) {
-            return false;
-        }
-
-        return (bool) preg_match('/' . preg_quote($iterableVar, '/') . '\s*=\s*.*?(::all|->get|::get|paginate|cursor|simplePaginate)\s*\(/is', $context);
+        return (bool) preg_match('/::(?:all|get|paginate|cursor|simplePaginate|first|chunk|lazy)\s*\(/i', $haystack)
+            || (bool) preg_match('/::query\s*\(\)/i', $haystack)
+            || (bool) preg_match('/::where\s*\(/i', $haystack);
     }
 
     private function looksLikeUncheckedBladeSource(string $context, string $iterableExpr): bool
     {
-        if (preg_match('/(with|load|loadMissing)\s*\(/i', $context)) {
+        $haystack = $context . "\n" . $iterableExpr;
+
+        if (preg_match('/\b(with|load|loadMissing)\s*\(/i', $haystack)) {
             return false;
         }
 
-        if (preg_match('/@php\s*\(?\s*\$\w+\s*=\s*.*?(::all|->get|::get|paginate|cursor|simplePaginate)\s*\(/is', $context)) {
-            return true;
-        }
-
-        return (bool) preg_match('/' . preg_quote($iterableExpr, '/') . '.*?(::all|->get|::get|paginate|cursor|simplePaginate)\s*\(/is', $context);
+        return (bool) preg_match('/::(?:all|get|paginate|cursor|simplePaginate|first|chunk|lazy)\s*\(/i', $haystack)
+            || (bool) preg_match('/::query\s*\(\)/i', $haystack)
+            || (bool) preg_match('/::where\s*\(/i', $haystack);
     }
 
-    private function findRelationChainSnippet(string $body, string $itemVar): ?string
+    private function inferModelClass(string $context, string $iterableExpr): ?string
     {
-        if (preg_match('/' . preg_quote($itemVar, '/') . '\s*->\s*[A-Za-z_][A-Za-z0-9_]*\s*->\s*[A-Za-z_][A-Za-z0-9_]*/', $body, $matches)) {
-            return trim($matches[0]);
+        foreach ([$iterableExpr, $context] as $source) {
+            if (preg_match('/(?:^|[^$])([A-Z][A-Za-z0-9_\\\\]*)::(?:query|all|get|paginate|cursor|simplePaginate|first|chunk|lazy|where|find|with|load|loadMissing)\b/i', $source, $matches)) {
+                return $matches[1];
+            }
         }
 
         return null;
+    }
+
+    private function findRelationChainSnippet(string $body, string $itemVar, string $modelClass): ?string
+    {
+        $modelFile = $this->resolveModelFile($modelClass);
+        if ($modelFile === null) {
+            return null;
+        }
+
+        $modelContents = file_get_contents($modelFile);
+        if ($modelContents === false) {
+            return null;
+        }
+
+        if (! preg_match_all('/' . preg_quote($itemVar, '/') . '\s*->\s*([A-Za-z_][A-Za-z0-9_]*)\s*->\s*[A-Za-z_][A-Za-z0-9_]*(?:\s*->\s*[A-Za-z_][A-Za-z0-9_]*)*/', $body, $matches, PREG_SET_ORDER)) {
+            return null;
+        }
+
+        foreach ($matches as $match) {
+            $property = $match[1];
+
+            if ($this->modelHasScalarAttribute($modelContents, $property)) {
+                continue;
+            }
+
+            if ($this->modelHasRelationMethod($modelContents, $property)) {
+                return trim($match[0]);
+            }
+        }
+
+        return null;
+    }
+
+    private function modelHasScalarAttribute(string $contents, string $attribute): bool
+    {
+        $quotedAttribute = preg_quote($attribute, '/');
+
+        if (preg_match('/\$casts\s*=\s*\[(?:.|\n)*?[\'\"]' . $quotedAttribute . '[\'\"]\s*=>/i', $contents)) {
+            return true;
+        }
+
+        if (preg_match('/function\s+casts\s*\(\s*\)\s*:\s*array\s*\{(?:.|\n)*?[\'\"]' . $quotedAttribute . '[\'\"]\s*=>/i', $contents)) {
+            return true;
+        }
+
+        if (preg_match('/\$dates\s*=\s*\[(?:.|\n)*?[\'\"]' . $quotedAttribute . '[\'\"]/i', $contents)) {
+            return true;
+        }
+
+        if (preg_match('/function\s+get' . preg_quote($this->studly($attribute), '/') . 'Attribute\s*\(/i', $contents)) {
+            return true;
+        }
+
+        if (preg_match('/function\s+' . preg_quote($this->camel($attribute), '/') . '\s*\([^)]*\)\s*:\s*Attribute\b/i', $contents)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function modelHasRelationMethod(string $contents, string $relationName): bool
+    {
+        $methodBlock = $this->extractMethodBlock($contents, $relationName);
+        if ($methodBlock === null) {
+            return false;
+        }
+
+        if (preg_match('/return\s+\$this\s*->\s*(' . implode('|', self::RELATION_METHODS) . ')\s*\(/i', $methodBlock)) {
+            return true;
+        }
+
+        if (preg_match('/:\s*(?:\\\\?Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\)?[A-Za-z_\\\\]*Relation\b/i', $methodBlock)) {
+            return true;
+        }
+
+        if (preg_match('/@return\s+[^
+]*(?:\\\\?Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\)?[A-Za-z_\\\\]*Relation\b/i', $methodBlock)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function extractMethodBlock(string $contents, string $methodName): ?string
+    {
+        if (! preg_match('/function\s+' . preg_quote($methodName, '/') . '\s*\([^)]*\)[^{]*\{/i', $contents, $match, PREG_OFFSET_CAPTURE)) {
+            return null;
+        }
+
+        $start = $match[0][1];
+        $braceStart = strpos($contents, '{', $start);
+        if ($braceStart === false) {
+            return null;
+        }
+
+        $depth = 0;
+        $length = strlen($contents);
+
+        for ($i = $braceStart; $i < $length; $i++) {
+            if ($contents[$i] === '{') {
+                $depth++;
+                continue;
+            }
+
+            if ($contents[$i] === '}') {
+                $depth--;
+
+                if ($depth === 0) {
+                    return substr($contents, $start, $i - $start + 1);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function resolveModelFile(string $modelClass): ?string
+    {
+        $root = rtrim($this->rootPath ?? base_path(), DIRECTORY_SEPARATOR);
+        $shortName = basename(str_replace('\\', '/', $modelClass)) . '.php';
+        $relativeClassPath = str_replace('\\', DIRECTORY_SEPARATOR, preg_replace('/^App\\\\/i', '', $modelClass)) . '.php';
+
+        $candidates = [
+            $root . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . $relativeClassPath,
+            $root . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . 'Models' . DIRECTORY_SEPARATOR . $shortName,
+            $root . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . $shortName,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_file($candidate)) {
+                return $candidate;
+            }
+        }
+
+        $appDirectory = $root . DIRECTORY_SEPARATOR . 'app';
+        if (! is_dir($appDirectory)) {
+            return null;
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($appDirectory, \FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($iterator as $fileInfo) {
+            if ($fileInfo->isFile() && $fileInfo->getFilename() === $shortName) {
+                return $fileInfo->getPathname();
+            }
+        }
+
+        return null;
+    }
+
+    private function studly(string $value): string
+    {
+        $value = str_replace(['-', '_'], ' ', $value);
+        $value = ucwords($value);
+
+        return str_replace(' ', '', $value);
+    }
+
+    private function camel(string $value): string
+    {
+        $studly = $this->studly($value);
+
+        return lcfirst($studly);
     }
 
     private function relativePath(string $path): string
