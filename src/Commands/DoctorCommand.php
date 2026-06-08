@@ -140,6 +140,7 @@ final class DoctorCommand extends Command
 
             // Infrastructure
             new DatabaseConnectionCheck,
+            new MigrationStatusCheck,
             new SchedulerCheck,
         ];
 
