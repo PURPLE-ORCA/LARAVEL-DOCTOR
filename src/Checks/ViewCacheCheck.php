@@ -21,6 +21,7 @@ final class ViewCacheCheck implements DoctorCheck
 
     public function run(): DoctorCheckResult
     {
+        $env = config('app.env', 'production');
         $cachePath = base_path('bootstrap/cache/views.php');
 
         if (file_exists($cachePath)) {
@@ -38,6 +39,10 @@ final class ViewCacheCheck implements DoctorCheck
             return DoctorCheckResult::pass(
                 "Views cached ({$hours}h ago)"
             );
+        }
+
+        if ($env !== 'production') {
+            return DoctorCheckResult::pass("Views are not cached (env: {$env} — expected for local dev)");
         }
 
         return DoctorCheckResult::warn(

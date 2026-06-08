@@ -6,7 +6,6 @@ namespace PurpleOrca\Doctor\Checks;
 
 use PurpleOrca\Doctor\Contracts\DoctorCheck;
 use PurpleOrca\Doctor\Contracts\DoctorCheckResult;
-use Illuminate\Support\Facades\Artisan;
 
 final class CacheStatusCheck implements DoctorCheck
 {
@@ -22,9 +21,7 @@ final class CacheStatusCheck implements DoctorCheck
 
     public function run(): DoctorCheckResult
     {
-        $configCached = file_exists(config_path('services.php'));
-
-        // Check if config cache file exists
+        $env = config('app.env', 'production');
         $cachePath = base_path('bootstrap/cache/config.php');
         $cached = file_exists($cachePath);
 
@@ -44,9 +41,14 @@ final class CacheStatusCheck implements DoctorCheck
             );
         }
 
+        if ($env !== 'production') {
+            return DoctorCheckResult::pass("Config is not cached (env: {$env} — expected for local dev)");
+        }
+
         return DoctorCheckResult::warn(
             'Config is not cached',
-            'Run: php artisan config:cache for production'
+            'Run: php artisan config:cache for production',
+            'Uncached config is parsed on every request, adding overhead'
         );
     }
 }

@@ -21,6 +21,7 @@ final class RouteCacheCheck implements DoctorCheck
 
     public function run(): DoctorCheckResult
     {
+        $env = config('app.env', 'production');
         $cachePath = base_path('bootstrap/cache/routes-v7.php');
 
         if (file_exists($cachePath)) {
@@ -38,6 +39,10 @@ final class RouteCacheCheck implements DoctorCheck
             return DoctorCheckResult::pass(
                 "Routes cached ({$hours}h ago)"
             );
+        }
+
+        if ($env !== 'production') {
+            return DoctorCheckResult::pass("Routes are not cached (env: {$env} — expected for local dev)");
         }
 
         return DoctorCheckResult::warn(

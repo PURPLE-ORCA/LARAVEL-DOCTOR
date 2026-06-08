@@ -22,23 +22,19 @@ final class DebugModeCheck implements DoctorCheck
     public function run(): DoctorCheckResult
     {
         $debug = config('app.debug');
+        $env = config('app.env', 'production');
 
         if ($debug === true) {
-            $env = config('app.env', 'production');
-
             if ($env === 'production') {
                 return DoctorCheckResult::fail(
                     'APP_DEBUG is ON in production',
-                    'Set APP_DEBUG=false in your .env for production'
+                    'Set APP_DEBUG=false in your .env for production',
+                    'Exposes stack traces and sensitive config to end users',
+                    'https://laravel.com/docs/configuration#debug-mode',
                 );
             }
 
-            return DoctorCheckResult::warn(
-                "APP_DEBUG is ON (env: {$env})",
-                'Make sure APP_DEBUG=false in production',
-                'Exposes stack traces and sensitive config to end users',
-                'https://laravel.com/docs/configuration#debug-mode',
-            );
+            return DoctorCheckResult::pass("APP_DEBUG is ON (env: {$env} — expected for local dev)");
         }
 
         return DoctorCheckResult::pass('APP_DEBUG is OFF');

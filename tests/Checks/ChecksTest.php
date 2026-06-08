@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use PurpleOrca\Doctor\Checks\AppKeyCheck;
 use PurpleOrca\Doctor\Checks\DebugModeCheck;
+use PurpleOrca\Doctor\Checks\MailMailerCheck;
 use PurpleOrca\Doctor\Checks\PhpVersionCheck;
 use PurpleOrca\Doctor\Enums\Status;
 
@@ -39,14 +40,14 @@ it('passes when APP_KEY is valid', function () {
     expect($result->status)->toBe(Status::Pass);
 });
 
-it('checks debug mode status', function () {
+it('fails when debug mode is on in production', function () {
     config(['app.debug' => true, 'app.env' => 'production']);
 
     $check = new DebugModeCheck;
     $result = $check->run();
 
     expect($result->status)->toBe(Status::Fail);
-    expect($result->message)->toContain('APP_DEBUG is ON');
+    expect($result->message)->toContain('APP_DEBUG is ON in production');
 });
 
 it('passes when debug mode is off', function () {
@@ -56,4 +57,34 @@ it('passes when debug mode is off', function () {
     $result = $check->run();
 
     expect($result->status)->toBe(Status::Pass);
+});
+
+it('passes when debug mode is on in local', function () {
+    config(['app.debug' => true, 'app.env' => 'local']);
+
+    $check = new DebugModeCheck;
+    $result = $check->run();
+
+    expect($result->status)->toBe(Status::Pass);
+    expect($result->message)->toContain('expected for local dev');
+});
+
+it('fails when mail mailer is log in production', function () {
+    config(['mail.default' => 'log', 'app.env' => 'production']);
+
+    $check = new MailMailerCheck;
+    $result = $check->run();
+
+    expect($result->status)->toBe(Status::Fail);
+    expect($result->message)->toContain('log" in production');
+});
+
+it('passes when mail mailer is log in local', function () {
+    config(['mail.default' => 'log', 'app.env' => 'local']);
+
+    $check = new MailMailerCheck;
+    $result = $check->run();
+
+    expect($result->status)->toBe(Status::Pass);
+    expect($result->message)->toContain('expected for local dev');
 });

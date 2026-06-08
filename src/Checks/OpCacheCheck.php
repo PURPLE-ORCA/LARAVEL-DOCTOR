@@ -21,6 +21,12 @@ final class OpCacheCheck implements DoctorCheck
 
     public function run(): DoctorCheckResult
     {
+        $env = config('app.env', 'production');
+
+        if ($env !== 'production') {
+            return DoctorCheckResult::pass("OPcache check skipped (env: {$env} — production-only check)");
+        }
+
         if (! extension_loaded('Zend OPcache')) {
             return DoctorCheckResult::warn(
                 'OPcache extension is not loaded',

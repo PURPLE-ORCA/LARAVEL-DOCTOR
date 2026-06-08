@@ -22,6 +22,7 @@ final class MailMailerCheck implements DoctorCheck
     public function run(): DoctorCheckResult
     {
         $mailer = config('mail.default');
+        $env = config('app.env', 'production');
 
         if (blank($mailer)) {
             return DoctorCheckResult::fail(
@@ -31,8 +32,6 @@ final class MailMailerCheck implements DoctorCheck
         }
 
         if ($mailer === 'log') {
-            $env = config('app.env', 'production');
-
             if ($env === 'production') {
                 return DoctorCheckResult::fail(
                     'MAIL_MAILER is set to "log" in production',
@@ -40,10 +39,7 @@ final class MailMailerCheck implements DoctorCheck
                 );
             }
 
-            return DoctorCheckResult::warn(
-                "MAIL_MAILER is set to 'log' (env: {$env})",
-                'Make sure to use a real mail driver in production'
-            );
+            return DoctorCheckResult::pass("MAIL_MAILER is 'log' (env: {$env} — expected for local dev)");
         }
 
         return DoctorCheckResult::pass("MAIL_MAILER is set to '{$mailer}'");
