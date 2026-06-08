@@ -134,6 +134,7 @@ final class DoctorCommand extends Command
             // Performance
             new CacheStatusCheck,
             new RouteCacheCheck,
+            new ViewCacheCheck,
             new StorageLinkCheck,
 
             // Infrastructure
