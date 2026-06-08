@@ -52,6 +52,7 @@ final class DoctorCommand extends Command
         }
 
         // Run all checks
+        $start = microtime(true);
         $results = [];
         foreach ($checks as $check) {
             $results[] = [
@@ -59,6 +60,7 @@ final class DoctorCommand extends Command
                 'result' => $check->run(),
             ];
         }
+        $elapsed = microtime(true) - $start;
 
         // Calculate score
         $resultObjects = array_map(fn (array $item) => $item['result'], $results);
@@ -89,7 +91,7 @@ final class DoctorCommand extends Command
             $grouped[$category][] = $item;
         }
 
-        $formatter->render($grouped, $score, $breakdown);
+        $formatter->render($grouped, $score, $breakdown, $elapsed);
 
         // Exit code based on failures
         if ($breakdown['fail'] > 0) {
