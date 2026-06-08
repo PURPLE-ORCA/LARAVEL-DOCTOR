@@ -66,8 +66,26 @@ final class ConsoleFormatter
         }
 
         // Score
-        $scoreColor = $score >= 80 ? 'green' : ($score >= 60 ? 'yellow' : 'red');
-        $this->output->writeln("  <options=bold>Score: <fg={$scoreColor}>{$score}/100</></options=bold>");
+        $scoreLabel = match (true) {
+            $score >= 90 => 'Excellent',
+            $score >= 80 => 'Good',
+            $score >= 60 => 'Needs work',
+            default => 'Critical',
+        };
+        $scoreColor = match (true) {
+            $score >= 80 => 'green',
+            $score >= 60 => 'yellow',
+            default => 'red',
+        };
+        $barColor = match (true) {
+            $score >= 80 => 'green',
+            $score >= 60 => 'yellow',
+            default => 'red',
+        };
+
+        $this->output->writeln("  <options=bold>Score: <fg={$scoreColor}>{$score}/100 {$scoreLabel}</></options=bold>");
+        $this->output->writeln('  ' . $this->renderProgressBar($score, $barColor));
+        $this->output->writeln('');
 
         $parts = [];
         if ($breakdown['fail'] > 0) {
@@ -120,6 +138,17 @@ final class ConsoleFormatter
                 $this->output->writeln($line);
             }
         }
+    }
+
+    private function renderProgressBar(int $score, string $color): string
+    {
+        $width = 30;
+        $filled = (int) round($score / 100 * $width);
+        $empty = $width - $filled;
+
+        $bar = str_repeat('█', $filled) . str_repeat('░', $empty);
+
+        return "<fg={$color}>{$bar}</>";
     }
 
     private function titleCase(string $value): string
