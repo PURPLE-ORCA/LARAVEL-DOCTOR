@@ -65,8 +65,16 @@ final class ConsoleFormatter
                 $line = "    <fg={$color}>{$icon}</> {$result->message}";
                 $this->output->writeln($line);
 
+                if ($result->impact !== null) {
+                    $this->output->writeln("      <comment>{$result->impact}</comment>");
+                }
+
                 if ($result->advice !== null) {
                     $this->output->writeln("      <comment>→ {$result->advice}</comment>");
+                }
+
+                if ($result->docsUrl !== null) {
+                    $this->output->writeln("      <comment>See: {$result->docsUrl}</comment>");
                 }
             }
 

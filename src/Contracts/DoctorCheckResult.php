@@ -12,6 +12,8 @@ final class DoctorCheckResult
         public readonly Status $status,
         public readonly string $message,
         public readonly ?string $advice = null,
+        public readonly ?string $impact = null,
+        public readonly ?string $docsUrl = null,
     ) {}
 
     public static function pass(string $message): self
@@ -19,13 +21,13 @@ final class DoctorCheckResult
         return new self(Status::Pass, $message);
     }
 
-    public static function warn(string $message, ?string $advice = null): self
+    public static function warn(string $message, ?string $advice = null, ?string $impact = null, ?string $docsUrl = null): self
     {
-        return new self(Status::Warn, $message, $advice);
+        return new self(Status::Warn, $message, $advice, $impact, $docsUrl);
     }
 
-    public static function fail(string $message, ?string $advice = null): self
+    public static function fail(string $message, ?string $advice = null, ?string $impact = null, ?string $docsUrl = null): self
     {
-        return new self(Status::Fail, $message, $advice);
+        return new self(Status::Fail, $message, $advice, $impact, $docsUrl);
     }
 }

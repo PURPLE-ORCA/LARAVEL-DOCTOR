@@ -35,7 +35,9 @@ final class DebugModeCheck implements DoctorCheck
 
             return DoctorCheckResult::warn(
                 "APP_DEBUG is ON (env: {$env})",
-                'Make sure APP_DEBUG=false in production'
+                'Make sure APP_DEBUG=false in production',
+                'Exposes stack traces and sensitive config to end users',
+                'https://laravel.com/docs/configuration#debug-mode',
             );
         }
 
