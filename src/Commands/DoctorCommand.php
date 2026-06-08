@@ -14,14 +14,15 @@ use PurpleOrca\Doctor\Checks\DebugModeCheck;
 use PurpleOrca\Doctor\Checks\EnvFileCheck;
 use PurpleOrca\Doctor\Checks\MailMailerCheck;
 use PurpleOrca\Doctor\Checks\MaintenanceModeCheck;
+use PurpleOrca\Doctor\Checks\MigrationStatusCheck;
+use PurpleOrca\Doctor\Checks\NPlusOneQueryCheck;
+use PurpleOrca\Doctor\Checks\OpCacheCheck;
 use PurpleOrca\Doctor\Checks\PhpVersionCheck;
 use PurpleOrca\Doctor\Checks\QueueConnectionCheck;
-use PurpleOrca\Doctor\Checks\SecurityAdvisoriesCheck;
-use PurpleOrca\Doctor\Checks\SessionDriverCheck;
-use PurpleOrca\Doctor\Checks\MigrationStatusCheck;
-use PurpleOrca\Doctor\Checks\OpCacheCheck;
 use PurpleOrca\Doctor\Checks\RouteCacheCheck;
 use PurpleOrca\Doctor\Checks\SchedulerCheck;
+use PurpleOrca\Doctor\Checks\SecurityAdvisoriesCheck;
+use PurpleOrca\Doctor\Checks\SessionDriverCheck;
 use PurpleOrca\Doctor\Checks\StorageLinkCheck;
 use PurpleOrca\Doctor\Checks\StorageWritableCheck;
 use PurpleOrca\Doctor\Checks\ViewCacheCheck;
@@ -139,6 +140,7 @@ final class DoctorCommand extends Command
 
             // Performance
             new CacheStatusCheck,
+            new NPlusOneQueryCheck,
             new RouteCacheCheck,
             new ViewCacheCheck,
             new OpCacheCheck,
