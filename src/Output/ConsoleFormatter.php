@@ -19,11 +19,11 @@ final class ConsoleFormatter
     public function render(array $groupedResults, int $score, array $breakdown): void
     {
         $this->output->writeln('');
-        $this->output->writeln('  <bold>🔬 Laravel Doctor</bold>');
+        $this->output->writeln('  <options=bold>🔬 Laravel Doctor</options=bold>');
         $this->output->writeln('');
 
         foreach ($groupedResults as $category => $results) {
-            $this->output->writeln("  <bold>{$this->titleCase($category)}</bold>");
+            $this->output->writeln("  <options=bold>{$this->titleCase($category)}</options=bold>");
 
             foreach ($results as $item) {
                 $check = $item['check'];
@@ -40,7 +40,7 @@ final class ConsoleFormatter
                     Status::Fail => 'red',
                 };
 
-                $line = "    <{$color}>{$icon}</{$color}> {$result->message}";
+                $line = "    <fg={$color}>{$icon}</> {$result->message}";
                 $this->output->writeln($line);
 
                 if ($result->advice !== null) {
@@ -53,17 +53,17 @@ final class ConsoleFormatter
 
         // Score
         $scoreColor = $score >= 80 ? 'green' : ($score >= 60 ? 'yellow' : 'red');
-        $this->output->writeln("  <bold>Score: <{$scoreColor}>{$score}/100</{$scoreColor}></bold>");
+        $this->output->writeln("  <options=bold>Score: <fg={$scoreColor}>{$score}/100</></options=bold>");
 
         $parts = [];
         if ($breakdown['fail'] > 0) {
-            $parts[] = "<red>{$breakdown['fail']} errors</red>";
+            $parts[] = "<fg=red>{$breakdown['fail']} errors</>";
         }
         if ($breakdown['warn'] > 0) {
-            $parts[] = "<yellow>{$breakdown['warn']} warnings</yellow>";
+            $parts[] = "<fg=yellow>{$breakdown['warn']} warnings</>";
         }
         if ($breakdown['pass'] > 0) {
-            $parts[] = "<green>{$breakdown['pass']} passed</green>";
+            $parts[] = "<fg=green>{$breakdown['pass']} passed</>";
         }
 
         if ($parts !== []) {
