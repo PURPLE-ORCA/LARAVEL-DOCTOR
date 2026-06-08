@@ -140,6 +140,7 @@ final class DoctorCommand extends Command
 
             // Infrastructure
             new DatabaseConnectionCheck,
+            new SchedulerCheck,
         ];
 
         // Register any custom checks from config
