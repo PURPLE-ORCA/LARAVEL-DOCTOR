@@ -7,6 +7,7 @@ namespace PurpleOrca\Doctor\Commands;
 use PurpleOrca\Doctor\Checks\AppEnvCheck;
 use PurpleOrca\Doctor\Checks\AppKeyCheck;
 use PurpleOrca\Doctor\Checks\AppUrlCheck;
+use PurpleOrca\Doctor\Checks\AuthenticatedMediaDeliveryCheck;
 use PurpleOrca\Doctor\Checks\CacheDriverCheck;
 use PurpleOrca\Doctor\Checks\CacheStatusCheck;
 use PurpleOrca\Doctor\Checks\DatabaseConnectionCheck;
@@ -138,6 +139,7 @@ final class DoctorCommand extends Command
 
             // Security
             new DebugModeCheck,
+            new AuthenticatedMediaDeliveryCheck,
             new RouteMiddlewareCoverageCheck,
             new SecurityAdvisoriesCheck,
 
