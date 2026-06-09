@@ -26,5 +26,12 @@ abstract class TestCase extends BaseTestCase
         $app['config']->set('app.env', 'testing');
         $app['config']->set('app.debug', false);
         $app['config']->set('app.key', 'base64:' . base64_encode(random_bytes(32)));
+        $app['config']->set('database.default', 'testbench');
+        $app['config']->set('database.connections.testbench', [
+            'driver' => 'sqlite',
+            'database' => ':memory:',
+            'prefix' => '',
+            'foreign_key_constraints' => true,
+        ]);
     }
 }
