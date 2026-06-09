@@ -20,6 +20,7 @@ use PurpleOrca\Doctor\Checks\NPlusOneQueryCheck;
 use PurpleOrca\Doctor\Checks\OpCacheCheck;
 use PurpleOrca\Doctor\Checks\PhpVersionCheck;
 use PurpleOrca\Doctor\Checks\QueueConnectionCheck;
+use PurpleOrca\Doctor\Checks\QueueWorkerHorizonHealthCheck;
 use PurpleOrca\Doctor\Checks\RouteCacheCheck;
 use PurpleOrca\Doctor\Checks\RouteMiddlewareCoverageCheck;
 use PurpleOrca\Doctor\Checks\SchedulerCheck;
@@ -154,6 +155,7 @@ final class DoctorCommand extends Command
             // Infrastructure
             new DatabaseConnectionCheck,
             new MigrationStatusCheck,
+            new QueueWorkerHorizonHealthCheck,
             new SchemaDriftCheck,
             new SchedulerCheck,
             new StorageWritableCheck,
