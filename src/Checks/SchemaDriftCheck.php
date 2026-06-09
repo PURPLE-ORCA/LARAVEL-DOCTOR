@@ -24,9 +24,9 @@ final class SchemaDriftCheck implements DoctorCheck
     private array $columnCache = [];
 
     /**
-     * @var array{fqcn: array<string, string>, basename: array<string, list<string>>}|null
+     * @var array{fqcn: array<string, array{table: string, relations: array<string, string>}>, basename: array<string, list<string>>}|null
      */
-    private ?array $modelTableMap = null;
+    private ?array $modelMetadata = null;
 
     public function __construct(
         private readonly ?string $rootPath = null,
@@ -130,33 +130,87 @@ final class SchemaDriftCheck implements DoctorCheck
         $builders = [];
 
         foreach ($this->statements($contents) as $statement) {
-            $source = $this->detectInlineSource($statement['code'], $imports, $namespace);
+            $tracked = $this->detectTrackedBuilder($statement['code'], $builders);
+            $rootSource = $tracked === null
+                ? $this->detectRootInlineSource($statement['code'], $imports, $namespace)
+                : null;
 
-            if ($source !== null) {
-                $issue = $this->detectMissingSchema($source['table'], $statement['code'], $path, $statement['line']);
+            $nestedSources = $this->nestedInlineSources(
+                $statement['code'],
+                $imports,
+                $namespace,
+                $rootSource['offset'] ?? null,
+            );
+
+            foreach ($nestedSources as $nestedSource) {
+                $issue = $this->detectMissingSchema(
+                    $nestedSource['table'],
+                    $this->extractExpressionFromOffset($statement['code'], $nestedSource['offset']),
+                    $path,
+                    $statement['line'] + $this->lineDeltaForOffset($statement['code'], $nestedSource['offset']),
+                );
+
+                if ($issue !== null) {
+                    return $issue;
+                }
+            }
+
+            $callbackSources = $this->extractEagerLoadCallbackSources(
+                $statement['code'],
+                $rootSource['model'] ?? $tracked['model'] ?? null,
+            );
+
+            foreach ($callbackSources as $callbackSource) {
+                if ($callbackSource['table'] === null) {
+                    continue;
+                }
+
+                $issue = $this->detectMissingSchema(
+                    $callbackSource['table'],
+                    $callbackSource['body'],
+                    $path,
+                    $statement['line'] + $callbackSource['line_delta'],
+                );
+
+                if ($issue !== null) {
+                    return $issue;
+                }
+            }
+
+            if ($rootSource !== null) {
+                $sanitizedStatement = $this->stripNestedSourceExpressions($statement['code'], $nestedSources);
+                $sanitizedStatement = $this->stripEagerLoadCallbackBodies($sanitizedStatement, $callbackSources);
+                $issue = $this->detectMissingSchema($rootSource['table'], $sanitizedStatement, $path, $statement['line']);
                 if ($issue !== null) {
                     return $issue;
                 }
 
-                if ($source['assignVar'] !== null && ! $this->containsTerminalMethod($statement['code'])) {
-                    $builders[$source['assignVar']] = $source['table'];
+                if ($rootSource['assignVar'] !== null && ! $this->containsTerminalMethod($sanitizedStatement)) {
+                    $builders[$rootSource['assignVar']] = [
+                        'table' => $rootSource['table'],
+                        'model' => $rootSource['model'],
+                    ];
                 }
 
                 continue;
             }
 
-            $tracked = $this->detectTrackedBuilder($statement['code'], $builders);
             if ($tracked === null) {
                 continue;
             }
 
-            $issue = $this->detectMissingSchema($tracked['table'], $statement['code'], $path, $statement['line']);
+            $sanitizedStatement = $this->stripNestedSourceExpressions($statement['code'], $nestedSources);
+            $sanitizedStatement = $this->stripEagerLoadCallbackBodies($sanitizedStatement, $callbackSources);
+            $issue = $this->detectMissingSchema($tracked['table'], $sanitizedStatement, $path, $statement['line']);
             if ($issue !== null) {
                 return $issue;
             }
 
             if ($tracked['assignVar'] !== null) {
-                $builders[$tracked['assignVar']] = $tracked['table'];
+                $builders[$tracked['assignVar']] = [
+                    'table' => $tracked['table'],
+                    'model' => $tracked['model'],
+                ];
             }
         }
 
@@ -168,50 +222,66 @@ final class SchemaDriftCheck implements DoctorCheck
      */
     private function statements(string $contents): array
     {
-        $lines = preg_split('/\R/', $contents) ?: [];
         $statements = [];
         $buffer = '';
-        $startLine = 1;
+        $length = strlen($contents);
+        $quote = null;
+        $escapeNext = false;
+        $statementStartOffset = null;
 
-        foreach ($lines as $index => $line) {
-            if ($buffer === '') {
-                $startLine = $index + 1;
+        for ($index = 0; $index < $length; $index++) {
+            $char = $contents[$index];
+            $buffer .= $char;
+
+            if ($statementStartOffset === null && ! ctype_space($char)) {
+                $statementStartOffset = $index;
             }
 
-            $buffer .= $line . "\n";
-
-            if (! str_contains($line, ';')) {
-                continue;
-            }
-
-            $parts = explode(';', $buffer);
-            $lastIndex = count($parts) - 1;
-            $lineCursor = $startLine;
-
-            foreach ($parts as $partIndex => $part) {
-                if ($partIndex === $lastIndex) {
-                    $buffer = $part;
-                    $startLine = $lineCursor + substr_count($part, "\n");
+            if ($quote !== null) {
+                if ($escapeNext) {
+                    $escapeNext = false;
                     continue;
                 }
 
-                $statement = trim($part);
-                if ($statement !== '') {
-                    $statements[] = [
-                        'code' => $statement . ';',
-                        'line' => $lineCursor,
-                    ];
+                if ($char === '\\') {
+                    $escapeNext = true;
+                    continue;
                 }
 
-                $lineCursor += substr_count($part, "\n");
+                if ($char === $quote) {
+                    $quote = null;
+                }
+
+                continue;
             }
+
+            if ($char === '"' || $char === '\'') {
+                $quote = $char;
+                continue;
+            }
+
+            if ($char !== ';') {
+                continue;
+            }
+
+            $statement = trim($buffer);
+            if ($statement !== '' && $statementStartOffset !== null) {
+                $statements[] = [
+                    'code' => $statement,
+                    'line' => substr_count(substr($contents, 0, $statementStartOffset), "\n") + 1,
+                ];
+            }
+
+            $buffer = '';
+            $statementStartOffset = null;
         }
 
         $tail = trim($buffer);
         if ($tail !== '') {
+            $tailOffset = $statementStartOffset ?? 0;
             $statements[] = [
                 'code' => $tail,
-                'line' => $startLine,
+                'line' => substr_count(substr($contents, 0, $tailOffset), "\n") + 1,
             ];
         }
 
@@ -256,40 +326,371 @@ final class SchemaDriftCheck implements DoctorCheck
 
     /**
      * @param array<string, string> $imports
-     * @return array{table: string, assignVar: string|null}|null
+     * @return array{table: string, assignVar: string|null, offset: int, model: string|null}|null
      */
-    private function detectInlineSource(string $statement, array $imports, ?string $namespace): ?array
+    private function detectRootInlineSource(string $statement, array $imports, ?string $namespace): ?array
     {
+        $sources = $this->nestedInlineSources($statement, $imports, $namespace, null);
+        if ($sources === []) {
+            return null;
+        }
+
+        $rootSource = $sources[0];
+        $prefix = substr($statement, 0, $rootSource['offset']);
         $assignVar = null;
-        if (preg_match('/(\$[A-Za-z_][A-Za-z0-9_]*)\s*=/', $statement, $assignment)) {
+
+        if (preg_match('/(\$[A-Za-z_][A-Za-z0-9_]*)\s*=\s*$/', $prefix, $assignment)) {
             $assignVar = $assignment[1];
         }
 
-        if (preg_match('/(?:DB::|db\(\)->)table\(\s*["\']([A-Za-z_][A-Za-z0-9_]*)["\']\s*\)/', $statement, $tableMatch)) {
-            return [
-                'table' => $tableMatch[1],
-                'assignVar' => $assignVar,
-            ];
-        }
-
-        if (! preg_match('/(?<!->)((?:\\\\)?[A-Z][A-Za-z0-9_\\\\]*)::(?:query|where|orWhere|whereIn|whereNotIn|orderBy|groupBy|having|select|addSelect|pluck|value|firstWhere|update|insert)\s*\(/', $statement, $classMatch)) {
-            return null;
-        }
-
-        $table = $this->resolveModelTable($classMatch[1], $imports, $namespace);
-        if ($table === null) {
-            return null;
-        }
-
         return [
-            'table' => $table,
+            'table' => $rootSource['table'],
             'assignVar' => $assignVar,
+            'offset' => $rootSource['offset'],
+            'model' => $rootSource['model'],
         ];
     }
 
     /**
-     * @param array<string, string> $builders
-     * @return array{table: string, assignVar: string|null}|null
+     * @param array<string, string> $imports
+     * @return list<array{table: string, offset: int, model: string|null}>
+     */
+    private function nestedInlineSources(string $statement, array $imports, ?string $namespace, ?int $rootOffset): array
+    {
+        $sources = [];
+
+        if (preg_match_all('/(?:DB::|db\(\)->)table\(\s*["\']([A-Za-z_][A-Za-z0-9_]*)["\']\s*\)/', $statement, $tableMatches, PREG_OFFSET_CAPTURE)) {
+            foreach ($tableMatches[0] as $index => $fullMatch) {
+                $offset = $fullMatch[1];
+                if ($rootOffset !== null && $offset <= $rootOffset) {
+                    continue;
+                }
+
+                $sources[] = [
+                    'table' => $tableMatches[1][$index][0],
+                    'offset' => $offset,
+                    'model' => null,
+                ];
+            }
+        }
+
+        if (preg_match_all('/(?<!->)(((?:\\\\)?[A-Z][A-Za-z0-9_\\\\]*)::(?:query|where|orWhere|whereIn|whereNotIn|orderBy|groupBy|having|select|addSelect|pluck|value|firstWhere|update|insert)\s*\()/', $statement, $classMatches, PREG_OFFSET_CAPTURE)) {
+            foreach ($classMatches[0] as $index => $fullMatch) {
+                $offset = $fullMatch[1];
+                if ($rootOffset !== null && $offset <= $rootOffset) {
+                    continue;
+                }
+
+                $model = $this->resolveModelInfo($classMatches[2][$index][0], $imports, $namespace);
+                if ($model === null) {
+                    continue;
+                }
+
+                $sources[] = [
+                    'table' => $model['table'],
+                    'offset' => $offset,
+                    'model' => $model['fqcn'],
+                ];
+            }
+        }
+
+        usort($sources, static fn (array $left, array $right): int => $left['offset'] <=> $right['offset']);
+
+        return $sources;
+    }
+
+    /**
+     * @param list<array{table: string, offset: int}> $nestedSources
+     */
+    private function stripNestedSourceExpressions(string $statement, array $nestedSources): string
+    {
+        foreach (array_reverse($nestedSources) as $nestedSource) {
+            $expression = $this->extractExpressionFromOffset($statement, $nestedSource['offset']);
+            $statement = substr_replace($statement, 'null', $nestedSource['offset'], strlen($expression));
+        }
+
+        return $statement;
+    }
+
+    private function extractExpressionFromOffset(string $statement, int $offset): string
+    {
+        $length = strlen($statement);
+        $stack = [];
+        $quote = null;
+        $escapeNext = false;
+        $expression = '';
+
+        for ($index = $offset; $index < $length; $index++) {
+            $char = $statement[$index];
+
+            if ($quote !== null) {
+                $expression .= $char;
+
+                if ($escapeNext) {
+                    $escapeNext = false;
+                    continue;
+                }
+
+                if ($char === '\\') {
+                    $escapeNext = true;
+                    continue;
+                }
+
+                if ($char === $quote) {
+                    $quote = null;
+                }
+
+                continue;
+            }
+
+            if ($char === '"' || $char === '\'') {
+                $quote = $char;
+                $expression .= $char;
+                continue;
+            }
+
+            if (in_array($char, ['(', '[', '{'], true)) {
+                $stack[] = $char;
+                $expression .= $char;
+                continue;
+            }
+
+            if (in_array($char, [')', ']', '}'], true)) {
+                if ($stack === []) {
+                    break;
+                }
+
+                array_pop($stack);
+                $expression .= $char;
+                continue;
+            }
+
+            if (($char === ',' || $char === ';') && $stack === []) {
+                break;
+            }
+
+            $expression .= $char;
+        }
+
+        return trim($expression);
+    }
+
+    private function lineDeltaForOffset(string $statement, int $offset): int
+    {
+        return substr_count(substr($statement, 0, $offset), "\n");
+    }
+
+    /**
+     * @param array<string, string> $delimiters
+     * @return array{code: string, length: int}
+     */
+    private function extractDelimitedSegment(string $statement, int $offset, array $delimiters): array
+    {
+        $length = strlen($statement);
+        $stack = [];
+        $quote = null;
+        $escapeNext = false;
+        $segment = '';
+        $consumed = 0;
+
+        for ($index = $offset; $index < $length; $index++) {
+            $char = $statement[$index];
+
+            if ($quote !== null) {
+                $segment .= $char;
+                $consumed++;
+
+                if ($escapeNext) {
+                    $escapeNext = false;
+                    continue;
+                }
+
+                if ($char === '\\') {
+                    $escapeNext = true;
+                    continue;
+                }
+
+                if ($char === $quote) {
+                    $quote = null;
+                }
+
+                continue;
+            }
+
+            if ($char === '"' || $char === '\'') {
+                $quote = $char;
+                $segment .= $char;
+                $consumed++;
+                continue;
+            }
+
+            if (in_array($char, ['(', '[', '{'], true)) {
+                $stack[] = $char;
+                $segment .= $char;
+                $consumed++;
+                continue;
+            }
+
+            if (in_array($char, [')', ']', '}'], true)) {
+                if ($stack === [] && in_array($char, $delimiters, true)) {
+                    break;
+                }
+
+                if ($stack === []) {
+                    break;
+                }
+
+                array_pop($stack);
+                $segment .= $char;
+                $consumed++;
+                continue;
+            }
+
+            if ($stack === [] && in_array($char, $delimiters, true)) {
+                break;
+            }
+
+            $segment .= $char;
+            $consumed++;
+        }
+
+        return [
+            'code' => trim($segment),
+            'length' => $consumed,
+        ];
+    }
+
+    /**
+     * @return list<array{table: string|null, offset: int, length: int, body: string, line_delta: int}>
+     */
+    private function extractEagerLoadCallbackSources(string $statement, ?string $rootModel): array
+    {
+        if ($rootModel === null) {
+            return [];
+        }
+
+        $relations = $this->modelMetadata()['fqcn'][$rootModel]['relations'] ?? [];
+        $sources = [];
+
+        if (! preg_match_all('/["\']([^"\']+)["\']\s*=>\s*(fn\s*\([^)]*\)\s*=>|function\s*\([^)]*\)\s*\{)/', $statement, $matches, PREG_OFFSET_CAPTURE)) {
+            return [];
+        }
+
+        foreach ($matches[0] as $index => $fullMatch) {
+            $relationPath = $matches[1][$index][0];
+            $relation = explode('.', $relationPath, 2)[0];
+            $callbackStart = $matches[2][$index][1];
+            $callbackHead = $matches[2][$index][0];
+            $table = $relations[$relation] ?? null;
+
+            if (str_starts_with($callbackHead, 'fn')) {
+                $arrowOffset = strpos($statement, '=>', $callbackStart);
+                if ($arrowOffset === false) {
+                    continue;
+                }
+
+                $bodyStart = $arrowOffset + 2;
+                while (isset($statement[$bodyStart]) && ctype_space($statement[$bodyStart])) {
+                    $bodyStart++;
+                }
+
+                $segment = $this->extractDelimitedSegment($statement, $bodyStart, [',', ']', ')']);
+                $sources[] = [
+                    'table' => $table,
+                    'offset' => $callbackStart,
+                    'length' => ($bodyStart - $callbackStart) + $segment['length'],
+                    'body' => $segment['code'],
+                    'line_delta' => $this->lineDeltaForOffset($statement, $bodyStart),
+                ];
+
+                continue;
+            }
+
+            $braceStart = strpos($statement, '{', $callbackStart);
+            if ($braceStart === false) {
+                continue;
+            }
+
+            $braceDepth = 1;
+            $quote = null;
+            $escapeNext = false;
+            $end = null;
+            $length = strlen($statement);
+
+            for ($cursor = $braceStart + 1; $cursor < $length; $cursor++) {
+                $char = $statement[$cursor];
+
+                if ($quote !== null) {
+                    if ($escapeNext) {
+                        $escapeNext = false;
+                        continue;
+                    }
+
+                    if ($char === '\\') {
+                        $escapeNext = true;
+                        continue;
+                    }
+
+                    if ($char === $quote) {
+                        $quote = null;
+                    }
+
+                    continue;
+                }
+
+                if ($char === '"' || $char === '\'') {
+                    $quote = $char;
+                    continue;
+                }
+
+                if ($char === '{') {
+                    $braceDepth++;
+                    continue;
+                }
+
+                if ($char !== '}') {
+                    continue;
+                }
+
+                $braceDepth--;
+                if ($braceDepth === 0) {
+                    $end = $cursor;
+                    break;
+                }
+            }
+
+            if ($end === null) {
+                continue;
+            }
+
+            $bodyStart = $braceStart + 1;
+            $sources[] = [
+                'table' => $table,
+                'offset' => $callbackStart,
+                'length' => ($end + 1) - $callbackStart,
+                'body' => trim(substr($statement, $bodyStart, $end - $bodyStart)),
+                'line_delta' => $this->lineDeltaForOffset($statement, $bodyStart),
+            ];
+        }
+
+        return $sources;
+    }
+
+    /**
+     * @param list<array{table: string|null, offset: int, length: int, body: string, line_delta: int}> $callbackSources
+     */
+    private function stripEagerLoadCallbackBodies(string $statement, array $callbackSources): string
+    {
+        foreach (array_reverse($callbackSources) as $callbackSource) {
+            $statement = substr_replace($statement, 'null', $callbackSource['offset'], $callbackSource['length']);
+        }
+
+        return $statement;
+    }
+
+    /**
+     * @param array<string, array{table: string, model: string|null}> $builders
+     * @return array{table: string, model: string|null, assignVar: string|null}|null
      */
     private function detectTrackedBuilder(string $statement, array $builders): ?array
     {
@@ -303,7 +704,8 @@ final class SchemaDriftCheck implements DoctorCheck
         }
 
         return [
-            'table' => $builders[$sourceVar],
+            'table' => $builders[$sourceVar]['table'],
+            'model' => $builders[$sourceVar]['model'],
             'assignVar' => $matches[1] ?? null,
         ];
     }
@@ -447,38 +849,70 @@ final class SchemaDriftCheck implements DoctorCheck
 
     private function resolveModelTable(string $candidate, array $imports, ?string $namespace): ?string
     {
-        $map = $this->modelTableMap();
+        return $this->resolveModelInfo($candidate, $imports, $namespace)['table'] ?? null;
+    }
+
+    /**
+     * @param array<string, string> $imports
+     * @return array{fqcn: string, table: string}|null
+     */
+    private function resolveModelInfo(string $candidate, array $imports, ?string $namespace): ?array
+    {
+        return $this->resolveModelInfoFromMap($this->modelMetadata(), $candidate, $imports, $namespace);
+    }
+
+    /**
+     * @param array{fqcn: array<string, array{table: string, relations: array<string, string>}>, basename: array<string, list<string>>} $map
+     * @param array<string, string> $imports
+     * @return array{fqcn: string, table: string}|null
+     */
+    private function resolveModelInfoFromMap(array $map, string $candidate, array $imports, ?string $namespace): ?array
+    {
         $candidate = ltrim($candidate, '\\');
 
         if (array_key_exists($candidate, $map['fqcn'])) {
-            return $map['fqcn'][$candidate];
+            return [
+                'fqcn' => $candidate,
+                'table' => $map['fqcn'][$candidate]['table'],
+            ];
         }
 
         if (array_key_exists($candidate, $imports) && array_key_exists($imports[$candidate], $map['fqcn'])) {
-            return $map['fqcn'][$imports[$candidate]];
+            return [
+                'fqcn' => $imports[$candidate],
+                'table' => $map['fqcn'][$imports[$candidate]]['table'],
+            ];
         }
 
         if ($namespace !== null) {
             $fqcn = $namespace . '\\' . $candidate;
             if (array_key_exists($fqcn, $map['fqcn'])) {
-                return $map['fqcn'][$fqcn];
+                return [
+                    'fqcn' => $fqcn,
+                    'table' => $map['fqcn'][$fqcn]['table'],
+                ];
             }
         }
 
         if (array_key_exists($candidate, $map['basename']) && count($map['basename'][$candidate]) === 1) {
-            return $map['fqcn'][$map['basename'][$candidate][0]];
+            $fqcn = $map['basename'][$candidate][0];
+
+            return [
+                'fqcn' => $fqcn,
+                'table' => $map['fqcn'][$fqcn]['table'],
+            ];
         }
 
         return null;
     }
 
     /**
-     * @return array{fqcn: array<string, string>, basename: array<string, list<string>>}
+     * @return array{fqcn: array<string, array{table: string, relations: array<string, string>}>, basename: array<string, list<string>>}
      */
-    private function modelTableMap(): array
+    private function modelMetadata(): array
     {
-        if ($this->modelTableMap !== null) {
-            return $this->modelTableMap;
+        if ($this->modelMetadata !== null) {
+            return $this->modelMetadata;
         }
 
         $root = rtrim($this->rootPath ?? base_path(), DIRECTORY_SEPARATOR);
@@ -487,11 +921,12 @@ final class SchemaDriftCheck implements DoctorCheck
             'fqcn' => [],
             'basename' => [],
         ];
+        $modelFiles = [];
 
         if (! is_dir($appPath)) {
-            $this->modelTableMap = $map;
+            $this->modelMetadata = $map;
 
-            return $this->modelTableMap;
+            return $this->modelMetadata;
         }
 
         foreach ($this->phpFilesIn($appPath) as $file) {
@@ -516,14 +951,37 @@ final class SchemaDriftCheck implements DoctorCheck
             }
 
             $fqcn = $namespace . '\\' . $class;
-            $map['fqcn'][$fqcn] = $table ?? Str::snake(Str::pluralStudly($class));
+            $map['fqcn'][$fqcn] = [
+                'table' => $table ?? Str::snake(Str::pluralStudly($class)),
+                'relations' => [],
+            ];
             $map['basename'][$class] ??= [];
             $map['basename'][$class][] = $fqcn;
+            $modelFiles[$fqcn] = [
+                'contents' => $contents,
+                'imports' => $this->parseImports($contents),
+                'namespace' => $namespace,
+            ];
         }
 
-        $this->modelTableMap = $map;
+        foreach ($modelFiles as $fqcn => $modelFile) {
+            if (! preg_match_all('/function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\([^)]*\)\s*(?::\s*[^\{]+)?\{.*?return\s+\$this->(?:hasOne|hasMany|belongsTo|belongsToMany|hasOneThrough|hasManyThrough|morphOne|morphMany|morphToMany)\(\s*([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)::class/si', $modelFile['contents'], $relationMatches, PREG_SET_ORDER)) {
+                continue;
+            }
 
-        return $this->modelTableMap;
+            foreach ($relationMatches as $relationMatch) {
+                $relationModel = $this->resolveModelInfoFromMap($map, $relationMatch[2], $modelFile['imports'], $modelFile['namespace']);
+                if ($relationModel === null) {
+                    continue;
+                }
+
+                $map['fqcn'][$fqcn]['relations'][$relationMatch[1]] = $relationModel['table'];
+            }
+        }
+
+        $this->modelMetadata = $map;
+
+        return $this->modelMetadata;
     }
 
     private function relativePath(string $path): string
