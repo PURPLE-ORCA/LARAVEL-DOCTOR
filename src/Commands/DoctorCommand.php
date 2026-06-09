@@ -20,6 +20,7 @@ use PurpleOrca\Doctor\Checks\OpCacheCheck;
 use PurpleOrca\Doctor\Checks\PhpVersionCheck;
 use PurpleOrca\Doctor\Checks\QueueConnectionCheck;
 use PurpleOrca\Doctor\Checks\RouteCacheCheck;
+use PurpleOrca\Doctor\Checks\RouteMiddlewareCoverageCheck;
 use PurpleOrca\Doctor\Checks\SchedulerCheck;
 use PurpleOrca\Doctor\Checks\SchemaDriftCheck;
 use PurpleOrca\Doctor\Checks\SecurityAdvisoriesCheck;
@@ -137,6 +138,7 @@ final class DoctorCommand extends Command
 
             // Security
             new DebugModeCheck,
+            new RouteMiddlewareCoverageCheck,
             new SecurityAdvisoriesCheck,
 
             // Performance
