@@ -8,7 +8,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | List of additional DoctorCheck classes to run.
-    | Each must implement Sahraoui\Doctor\Contracts\DoctorCheck.
+    | Each must implement PurpleOrca\Doctor\Contracts\DoctorCheck.
     |
     */
 

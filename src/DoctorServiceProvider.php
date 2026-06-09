@@ -11,12 +11,11 @@ final class DoctorServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
-        $this->mergeConfigFrom(
-            __DIR__ . '/../config/doctor.php',
-            'doctor'
-        );
-
         if ($this->app->runningInConsole()) {
+            $this->publishes([
+                __DIR__ . '/../config/doctor.php' => config_path('doctor.php'),
+            ], 'doctor');
+
             $this->commands([
                 DoctorCommand::class,
             ]);
@@ -25,6 +24,9 @@ final class DoctorServiceProvider extends ServiceProvider
 
     public function register(): void
     {
-        //
+        $this->mergeConfigFrom(
+            __DIR__ . '/../config/doctor.php',
+            'doctor'
+        );
     }
 }

@@ -93,7 +93,7 @@ final class DoctorCommand extends Command
                 ], $results),
             ], JSON_PRETTY_PRINT));
 
-            return $score >= 60 ? static::SUCCESS : static::FAILURE;
+            return $breakdown['fail'] > 0 ? static::FAILURE : static::SUCCESS;
         }
 
         // Group by category for display
