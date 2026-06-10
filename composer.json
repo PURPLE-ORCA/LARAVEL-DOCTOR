@@ -1,7 +1,9 @@
 {
     "name": "purple-orca/laravel-doctor",
-    "description": "The health check tool for Laravel apps. Run php artisan doctor and get a score.",
-    "keywords": ["laravel", "health", "doctor", "quality", "score"],
+    "description": "High-signal health checks for Laravel apps. Run php artisan doctor to catch deploy blockers, security drift, and production footguns.",
+    "type": "library",
+    "keywords": ["laravel", "artisan", "health-check", "doctor", "security", "performance", "quality", "score"],
+    "homepage": "https://github.com/PURPLE-ORCA/LARAVEL-DOCTOR",
     "license": "MIT",
     "authors": [
         {
@@ -17,6 +19,10 @@
     "require-dev": {
         "orchestra/testbench": "^8.0|^9.0",
         "pestphp/pest": "^2.0"
+    },
+    "support": {
+        "issues": "https://github.com/PURPLE-ORCA/LARAVEL-DOCTOR/issues",
+        "source": "https://github.com/PURPLE-ORCA/LARAVEL-DOCTOR"
     },
     "autoload": {
         "psr-4": {
