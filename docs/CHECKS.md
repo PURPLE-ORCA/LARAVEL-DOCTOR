@@ -2,6 +2,15 @@
 
 Laravel Doctor currently ships **27 checks**. This page is the dry reference: what runs, what category it belongs to, and what the check is trying to protect.
 
+## Release framing
+
+For public release, the package should be read in two layers:
+
+1. **Flagship incident-preventers** — `Schema Drift`, `Unique Constraint Coverage`, `Route Middleware Coverage`, `Authenticated Media Delivery`, `Queue Worker / Horizon Health`, `N+1 Query Detection`, plus the very actionable deploy checks like `Migration Status` and `Scheduler Cron`.
+2. **Baseline support checks** — environment/config/cache/storage/advisory checks that round out the health picture but are not the core product story on their own.
+
+That framing keeps the package from reading like "27 random checks" when the real value is the production-incident coverage.
+
 ## Environment
 
 | Check | Purpose |

@@ -13,12 +13,13 @@
 Most Laravel checklists are either too shallow or too noisy.
 
 **Laravel Doctor** focuses on checks that prevent real incidents:
-- migrations missing in production
 - schema drift between code and database
+- validator/database uniqueness drift
 - duplicate route names and auth drift
 - exposed media delivery endpoints
 - queued work silently stuck or disabled
 - N+1 query patterns that keep surviving review
+- pending migrations before deploy
 
 It is closer to **react-doctor for Laravel** than a generic style linter: deterministic, actionable, and built to help humans and coding agents converge on a healthier app quickly.
 
@@ -69,7 +70,7 @@ Real output from a local validation app, abridged:
 
 ## What it catches
 
-### High-signal checks
+### Flagship incident-preventers
 
 | Check | Category | What it catches |
 |---|---|---|
@@ -82,9 +83,17 @@ Real output from a local validation app, abridged:
 | Migration Status | infrastructure | Pending migrations before or after deploy |
 | Scheduler Cron | infrastructure | Apps with scheduled work but no system cron wiring |
 
+These are the checks the package should be known for publicly. They catch the bugs and deploy mistakes that actually turn into incidents.
+
+### Baseline support checks
+
+The rest of the package is useful operational hygiene: PHP/framework config sanity, cache state, storage wiring, security advisory surfacing, and other environment-aware checks that help complete the picture without being the main product story.
+
 ### Full check catalog
 
 Laravel Doctor currently ships **27 checks** across four categories.
+
+For launch framing, think of the package as **flagship incident-preventers + baseline support checks** — not as a bag of env trivia.
 
 | Category | Checks |
 |---|---|
