@@ -29,6 +29,7 @@ use PurpleOrca\Doctor\Checks\SecurityAdvisoriesCheck;
 use PurpleOrca\Doctor\Checks\SessionDriverCheck;
 use PurpleOrca\Doctor\Checks\StorageLinkCheck;
 use PurpleOrca\Doctor\Checks\StorageWritableCheck;
+use PurpleOrca\Doctor\Checks\UniqueConstraintCoverageCheck;
 use PurpleOrca\Doctor\Checks\ViewCacheCheck;
 use PurpleOrca\Doctor\Contracts\DoctorCheck;
 use PurpleOrca\Doctor\Output\ConsoleFormatter;
@@ -159,6 +160,7 @@ final class DoctorCommand extends Command
             new SchemaDriftCheck,
             new SchedulerCheck,
             new StorageWritableCheck,
+            new UniqueConstraintCoverageCheck,
         ];
 
         // Register any custom checks from config

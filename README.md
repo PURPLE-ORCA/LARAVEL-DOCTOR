@@ -42,7 +42,7 @@ Real output from a local validation app, abridged:
 ```text
 🔬 Laravel Doctor
 
-  ✓ Scanned 26 checks in 1.2s
+  ✓ Scanned 27 checks in 1.2s
 
   Security > 1 error
   Infrastructure > 1 warning
@@ -74,6 +74,7 @@ Real output from a local validation app, abridged:
 | Check | Category | What it catches |
 |---|---|---|
 | Schema Drift | infrastructure | Code that references columns your database does not have yet |
+| Unique Constraint Coverage | infrastructure | Validator-only `unique` rules that are not backed by a real database unique index |
 | Route Middleware Coverage | security | Sensitive routes missing `auth`, middleware drift, duplicate route names |
 | Authenticated Media Delivery | security | Public media/download endpoints, referer-only protection, unsigned playback URLs |
 | Queue Worker / Horizon Health | infrastructure | `ShouldQueue` work running on `sync`, missing queue tables, stale jobs, Horizon/backend mismatch |
@@ -83,14 +84,14 @@ Real output from a local validation app, abridged:
 
 ### Full check catalog
 
-Laravel Doctor currently ships **26 checks** across four categories.
+Laravel Doctor currently ships **27 checks** across four categories.
 
 | Category | Checks |
 |---|---|
 | Environment | PHP Version, APP_KEY, APP_ENV, APP_URL, .env file exists, SESSION_DRIVER, CACHE_DRIVER, QUEUE_CONNECTION, MAIL_MAILER, Maintenance Mode |
 | Security | Debug Mode, Authenticated Media Delivery, Route Middleware Coverage, Security Advisories |
 | Performance | Config Cache, N+1 Query Detection, Route Cache, View Cache, OPcache, Storage Link |
-| Infrastructure | Database Connection, Migration Status, Queue Worker / Horizon Health, Schema Drift, Scheduler Cron, Storage Writable |
+| Infrastructure | Database Connection, Migration Status, Queue Worker / Horizon Health, Schema Drift, Scheduler Cron, Storage Writable, Unique Constraint Coverage |
 
 See [docs/CHECKS.md](docs/CHECKS.md) for the full reference.
 

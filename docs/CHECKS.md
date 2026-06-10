@@ -1,6 +1,6 @@
 # Check Reference
 
-Laravel Doctor currently ships **26 checks**. This page is the dry reference: what runs, what category it belongs to, and what the check is trying to protect.
+Laravel Doctor currently ships **27 checks**. This page is the dry reference: what runs, what category it belongs to, and what the check is trying to protect.
 
 ## Environment
 
@@ -47,6 +47,7 @@ Laravel Doctor currently ships **26 checks**. This page is the dry reference: wh
 | Schema Drift | Detects code referencing database columns that do not exist |
 | Scheduler Cron | Detects missing scheduler cron wiring |
 | Storage Writable | Verifies key storage paths are writable |
+| Unique Constraint Coverage | Detects validator-only `unique` rules that are not backed by a real database unique index |
 
 ## Status semantics
 
